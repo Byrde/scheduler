@@ -15,11 +15,18 @@ jobs:
       pull-requests: write
       issues: write
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Semantic Release
+        id: release
+        uses: Byrde/github-reusable-workflows/actions/semantic-release@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          should-create-release: true
       
       - name: Setup Java
         uses: actions/setup-java@v3
@@ -55,13 +62,6 @@ jobs:
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Semantic Release
-        id: release
-        uses: Byrde/github-reusable-workflows/actions/semantic-release@main
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          should-create-release: true
       
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3

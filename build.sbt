@@ -68,8 +68,11 @@ Docker / daemonGroup := "scheduler"
 
 // Add health check support
 dockerCommands := dockerCommands.value.flatMap {
-  case ExecCmd("ENTRYPOINT", args @ _*) => Seq(
+  case cmd @ Cmd("USER", _*) => Seq(
     Cmd("RUN", "apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*"),
+    cmd
+  )
+  case ExecCmd("ENTRYPOINT", args @ _*) => Seq(
     Cmd("HEALTHCHECK", 
       "--interval=30s",
       "--timeout=10s", 

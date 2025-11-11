@@ -6,7 +6,7 @@ import com.byrde.scheduler.infrastructure._
 import org.byrde.logging.ScalaLogger
 
 import scala.io.StdIn
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 /**
  * Main application with CLI for testing and service mode
@@ -243,11 +243,6 @@ object Main {
       Try(comp.healthServer.stop())
     }
     logger.logInfo("Shutdown complete")
-  }
-  
-  private def maskConnectionString(url: String): String = {
-    // Mask password in connection string
-    url.replaceAll(":[^:@]+@", ":****@")
   }
 }
 
