@@ -1,0 +1,34 @@
+# SBT
+target/
+project/target/
+project/project/
+
+# IDE
+.idea/
+.vscode/
+.metals/
+.bsp/
+*.iml
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+docs/
+README.md
+
+# CI
+.github/
+
+# Test data
+*.log
+test-data/
+
+# Mac
+.DS_Store
+
+# Credentials (should never be in image)
+*.json
+credentials/
+

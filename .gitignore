@@ -1,0 +1,51 @@
+# SBT
+target/
+project/target/
+project/project/target/
+.cache
+.history
+.lib/
+dist/*
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+
+# Scala
+*.class
+*.log
+
+# IDEs
+.idea/
+.idea_modules/
+.vscode/
+.metals/
+.bsp/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.bloop
+
+# Mac
+.DS_Store
+
+# Test
+test-output/
+
+# Credentials and secrets
+*.json
+credentials/
+*.pem
+*.key
+service-account*.json
+
+# Environment
+.env
+.env.local
+
+# Assembly
+assembly/
+
