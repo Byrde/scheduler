@@ -75,31 +75,6 @@ sbt "run start"
 java -jar target/scala-2.13/pubsub-message-scheduler-0.1.0.jar start
 ```
 
-### CLI Commands
-
-```bash
-# Start the service
-java -jar pubsub-message-scheduler.jar start
-
-# Validate configuration
-java -jar pubsub-message-scheduler.jar test-config
-
-# Test database connection
-java -jar pubsub-message-scheduler.jar test-db
-
-# Test Pub/Sub connection
-java -jar pubsub-message-scheduler.jar test-pubsub
-
-# Schedule a message interactively
-java -jar pubsub-message-scheduler.jar schedule
-
-# Parse and validate JSON
-java -jar pubsub-message-scheduler.jar parse '{"executionTime":...}'
-
-# Show help
-java -jar pubsub-message-scheduler.jar help
-```
-
 ## Message Format
 
 The scheduler supports multiple schedule types based on [db-scheduler](https://github.com/kagkarlsson/db-scheduler) capabilities.
