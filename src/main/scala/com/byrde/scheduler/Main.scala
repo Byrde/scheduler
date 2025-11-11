@@ -34,9 +34,6 @@ object Main {
     
     args(0).toLowerCase match {
       case "start" => startService()
-      case "test-config" => testConfig()
-      case "test-db" => testDatabase()
-      case "test-pubsub" => testPubSub()
       case "schedule" => scheduleMessage(args.drop(1))
       case "parse" => parseMessage(args.drop(1))
       case "help" => printUsage()
@@ -56,9 +53,6 @@ object Main {
         |
         |Commands:
         |  start           Start the scheduler service (runs indefinitely)
-        |  test-config     Validate configuration
-        |  test-db         Test database connection
-        |  test-pubsub     Test Pub/Sub connection and credentials
         |  schedule        Schedule a message (interactive)
         |  parse           Parse and validate a schedule request JSON
         |  help            Show this help message
@@ -74,9 +68,6 @@ object Main {
         |Examples:
         |  # Start service
         |  java -jar pubsub-message-scheduler.jar start
-        |
-        |  # Test configuration
-        |  java -jar pubsub-message-scheduler.jar test-config
         |
         |  # Schedule a message interactively
         |  java -jar pubsub-message-scheduler.jar schedule
@@ -147,100 +138,6 @@ object Main {
       case ex: Exception =>
         logger.logError(s"Failed to start service: ${ex.getMessage}", ex)
         shutdown()
-        System.exit(1)
-    }
-  }
-  
-  /**
-   * Tests configuration loading and validation
-   */
-  private def testConfig(): Unit = {
-    println("Testing configuration...")
-    
-    Try(Config.load()) match {
-      case Success(config) =>
-        println("✓ Configuration loaded successfully")
-        println(s"  Database URL: ${maskConnectionString(config.database.url)}")
-        println(s"  Pub/Sub Project: ${config.pubsub.projectId}")
-        println(s"  Pub/Sub Subscription: ${config.pubsub.subscriptionName}")
-        println(s"  Credentials Path: ${config.pubsub.credentialsPath.getOrElse("(default)")}")
-        println(s"  Max Threads: ${config.scheduler.maxThreads}")
-        println(s"  Polling Interval: ${config.scheduler.pollingIntervalSeconds}s")
-        
-        Config.validate(config) match {
-          case Right(_) =>
-            println("✓ Configuration is valid")
-            System.exit(0)
-          case Left(error) =>
-            println(s"✗ Configuration validation failed: $error")
-            System.exit(1)
-        }
-      
-      case Failure(ex) =>
-        println(s"✗ Failed to load configuration: ${ex.getMessage}")
-        ex.printStackTrace()
-        System.exit(1)
-    }
-  }
-  
-  /**
-   * Tests database connection
-   */
-  private def testDatabase(): Unit = {
-    println("Testing database connection...")
-    
-    try {
-      val config = Config.load()
-      val dbManager = new DatabaseManager(config.database)
-      
-      dbManager.testConnection() match {
-        case Right(_) =>
-          println("✓ Database connection successful")
-          dbManager.close()
-          System.exit(0)
-        
-        case Left(error) =>
-          println(s"✗ Database connection failed: $error")
-          dbManager.close()
-          System.exit(1)
-      }
-    } catch {
-      case ex: Exception =>
-        println(s"✗ Error testing database: ${ex.getMessage}")
-        ex.printStackTrace()
-        System.exit(1)
-    }
-  }
-  
-  /**
-   * Tests Pub/Sub connection
-   */
-  private def testPubSub(): Unit = {
-    println("Testing Pub/Sub connection...")
-    
-    try {
-      val config = Config.load()
-      val pubsubClient = new PubSubClient(config.pubsub)
-      
-      println(s"✓ Pub/Sub client initialized successfully")
-      println(s"  Project ID: ${config.pubsub.projectId}")
-      
-      pubsubClient.testConnection() match {
-        case Right(_) =>
-          println("✓ Pub/Sub connection test successful")
-          pubsubClient.shutdown()
-          System.exit(0)
-        
-        case Left(error) =>
-          println(s"✗ Pub/Sub connection test failed: $error")
-          pubsubClient.shutdown()
-          System.exit(1)
-      }
-      
-    } catch {
-      case ex: Exception =>
-        println(s"✗ Pub/Sub initialization failed: ${ex.getMessage}")
-        ex.printStackTrace()
         System.exit(1)
     }
   }

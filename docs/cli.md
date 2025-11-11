@@ -46,87 +46,6 @@ java -jar pubsub-message-scheduler.jar start
 
 ---
 
-### `test-config`
-
-Validates the application configuration by loading all environment variables and checking required values.
-
-**Example:**
-```bash
-java -jar pubsub-message-scheduler.jar test-config
-```
-
-**Output:**
-```
-Testing configuration...
-✓ Configuration loaded successfully
-  Database URL: jdbc:postgresql://localhost:5432/****
-  Pub/Sub Project: my-gcp-project
-  Pub/Sub Subscription: schedule-requests
-  Credentials Path: /path/to/credentials.json
-  Max Threads: 10
-  Polling Interval: 10s
-✓ Configuration is valid
-```
-
-**Exit Codes:**
-- `0` - Configuration is valid
-- `1` - Configuration is invalid or missing
-
----
-
-### `test-db`
-
-Tests the database connection by attempting to connect and execute a simple validation query.
-
-**Example:**
-```bash
-java -jar pubsub-message-scheduler.jar test-db
-```
-
-**Output:**
-```
-Testing database connection...
-✓ Database connection successful
-```
-
-**Exit Codes:**
-- `0` - Database connection successful
-- `1` - Database connection failed
-
-**Notes:**
-- Supports PostgreSQL, MySQL, and SQL Server
-- The driver is auto-detected from the JDBC URL
-- Connection pool is initialized but immediately closed after test
-
----
-
-### `test-pubsub`
-
-Tests the Pub/Sub client initialization and connection by verifying credentials and API access.
-
-**Example:**
-```bash
-java -jar pubsub-message-scheduler.jar test-pubsub
-```
-
-**Output:**
-```
-Testing Pub/Sub connection...
-✓ Pub/Sub client initialized successfully
-  Project ID: my-gcp-project
-✓ Pub/Sub connection test successful
-```
-
-**Exit Codes:**
-- `0` - Pub/Sub connection successful
-- `1` - Connection failed (bad credentials, network issues, insufficient permissions, etc.)
-
-**Notes:**
-- Verifies credentials by listing topics in the project
-- Requires `pubsub.topics.list` permission on the project
-
----
-
 ### `schedule`
 
 Interactive command to schedule a message for future delivery. This is useful for testing the end-to-end scheduling flow.
@@ -219,33 +138,18 @@ All commands respect these environment variables:
 
 Recommended workflow for testing a new deployment:
 
-1. **Validate configuration**
-   ```bash
-   java -jar pubsub-message-scheduler.jar test-config
-   ```
-
-2. **Test database connection**
-   ```bash
-   java -jar pubsub-message-scheduler.jar test-db
-   ```
-
-3. **Test Pub/Sub credentials**
-   ```bash
-   java -jar pubsub-message-scheduler.jar test-pubsub
-   ```
-
-4. **Schedule a test message**
+1. **Schedule a test message**
    ```bash
    java -jar pubsub-message-scheduler.jar schedule
    # Enter test values when prompted
    ```
 
-5. **Start the service**
+2. **Start the service**
    ```bash
    java -jar pubsub-message-scheduler.jar start
    ```
 
-6. **Monitor health endpoint**
+3. **Monitor health endpoint**
    ```bash
    curl http://localhost:8080/health
    ```
@@ -287,16 +191,6 @@ Recommended workflow for testing a new deployment:
    ```
 
 ## Examples
-
-### Test Configuration in Docker
-
-```bash
-docker run --rm \
-  -e DATABASE_URL="jdbc:postgresql://db:5432/scheduler" \
-  -e PUBSUB_PROJECT_ID="my-project" \
-  -e PUBSUB_SUBSCRIPTION="schedule-requests" \
-  pubsub-message-scheduler:latest test-config
-```
 
 ### Schedule a Message
 

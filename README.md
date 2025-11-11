@@ -202,20 +202,11 @@ DATABASE_URL="jdbc:sqlserver://localhost:1433;databaseName=scheduler;user=admin;
 
 ## CLI Commands
 
-The scheduler provides a comprehensive CLI for testing and operations:
+The scheduler provides a comprehensive CLI:
 
 ```bash
 # Start the service
 java -jar pubsub-message-scheduler.jar start
-
-# Validate configuration
-java -jar pubsub-message-scheduler.jar test-config
-
-# Test database connection
-java -jar pubsub-message-scheduler.jar test-db
-
-# Test Pub/Sub connection
-java -jar pubsub-message-scheduler.jar test-pubsub
 
 # Schedule a message interactively
 java -jar pubsub-message-scheduler.jar schedule
