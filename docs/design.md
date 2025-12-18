@@ -9,6 +9,8 @@
 | **Target Topic** | The Google Cloud Pub/Sub topic where the scheduled message payload will be published. | Destination Topic, Outbound Topic |
 | **Payload** | The message content to be published at the scheduled execution time. | Message Body, Message Data |
 | **Task Execution** | The process of publishing a scheduled message's payload to its target topic when execution time is reached. | Message Publishing, Task Completion |
+| **Task Cancellation** | The process of marking a scheduled message as cancelled before its execution time, preventing future delivery. | Cancel, Abort |
+| **Task Status** | The lifecycle state of a scheduled message: Pending (awaiting execution), Executed (successfully published), Cancelled (aborted before execution), Failed (execution failed). | State, Lifecycle State |
 
 ### 2. Core Domain and Bounded Context
 * **Core Domain:** Message scheduling orchestration - the logic that transforms incoming schedule requests into persisted, reliable scheduled tasks and executes them at the correct time with proper failure handling.
@@ -31,4 +33,5 @@
     * **Entities:** None (single entity aggregate)
     * **Value Objects:** `TaskId`, `ExecutionTime`, `TargetTopic`, `MessagePayload`, `TaskStatus`
     * **Description:** Represents a persisted scheduled message in the database. Enforces lifecycle rules: a task can only be executed once, execution results must be recorded, and failed executions can be retried. This aggregate bridges the domain model to db-scheduler's task representation.
+    * **Cancellation Invariant:** A task can only be cancelled if its status is Pending. Cancelled tasks are never executed. Cancellation is idempotent (cancelling an already-cancelled task succeeds silently).
 

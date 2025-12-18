@@ -21,7 +21,10 @@
 ### 6. Key Features
 * - **Pub/Sub Message Ingestion:** Consume messages from a Google Cloud Pub/Sub subscription, where each message contains scheduling parameters (execution time) and the payload to be delivered later.
 * - **Database-Backed Scheduling:** Use db-scheduler library for reliable, persistent scheduling with support for PostgreSQL, MySQL, and SQL Server (all Google Cloud SQL compatible databases).
+* - **Task Cancellation:** Allow scheduled messages to be cancelled before execution via API, with proper state management and audit logging.
 * - **Dynamic Topic Routing:** Route scheduled messages to topics specified in the incoming message payload, enabling flexible multi-tenant or multi-workflow scenarios.
+* - **HTTP Management API:** RESTful API for scheduling, listing, retrieving, and cancelling scheduled messages with proper authentication and authorization.
+* - **Keyless Authentication:** Support Google Cloud's Application Default Credentials (ADC) and Workload Identity Federation (WIF) for secure, keyless authentication in Docker and Cloud Run environments.
 * - **Docker Deployment:** Provide a fully containerized deployment with minimal configuration requirements (database connection string and Pub/Sub credentials).
 * - **Deployment Documentation:** Comprehensive documentation for standing up the service from scratch, including database provisioning, Pub/Sub setup, and Docker configuration.
 
