@@ -209,7 +209,7 @@ class HttpApiServer(
       interpreter.route(endpoint).apply(router)
     }
     
-    v.createHttpServer()
+    val _ = v.createHttpServer()
       .requestHandler(router)
       .listen(config.port)
       .onSuccess { server =>
@@ -220,9 +220,11 @@ class HttpApiServer(
         } else {
           logger.logWarning("Basic authentication is DISABLED - API is unprotected")
         }
+        ()
       }
       .onFailure { err =>
         logger.logError(s"Failed to start HTTP API server: ${err.getMessage}", err)
+        ()
       }
   }
   

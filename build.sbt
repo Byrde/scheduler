@@ -97,7 +97,7 @@ scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
   "-unchecked",
-  "-Xlint",
+  "-Xlint:-byname-implicit,_",  // Enable all Xlint except byname-implicit (Tapir DSL triggers false positives)
   "-Ywarn-dead-code",
   "-Ywarn-numeric-widen",
   "-Ywarn-value-discard"
