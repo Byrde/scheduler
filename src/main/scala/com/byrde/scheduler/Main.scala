@@ -1,10 +1,11 @@
 package com.byrde.scheduler
 
-import com.byrde.scheduler.api.{PubSubSubscriber, ScheduleRequestParser}
+import com.byrde.scheduler.api.{HttpApiServer, PubSubSubscriber, ScheduleRequestParser}
 import com.byrde.scheduler.domain.ScheduleRequest
 import com.byrde.scheduler.infrastructure._
 import org.byrde.logging.ScalaLogger
 
+import scala.concurrent.ExecutionContext
 import scala.io.StdIn
 import scala.util.Try
 
@@ -17,13 +18,17 @@ object Main {
   
   private var components: Option[AppComponents] = None
   
+  // Execution context for async Pub/Sub operations
+  implicit private val ec: scala.concurrent.ExecutionContextExecutor = ExecutionContext.global
+  
   case class AppComponents(
     config: AppConfig,
     dbManager: DatabaseManager,
     pubsubClient: PubSubClient,
     scheduler: MessageScheduler,
     subscriber: PubSubSubscriber,
-    healthServer: HealthCheckServer
+    healthServer: HealthCheckServer,
+    apiServer: HttpApiServer
   )
   
   def main(args: Array[String]): Unit = {
@@ -36,6 +41,7 @@ object Main {
       case "start" => startService()
       case "schedule" => scheduleMessage(args.drop(1))
       case "parse" => parseMessage(args.drop(1))
+      case "openapi" => generateOpenApi(args.drop(1))
       case "help" => printUsage()
       case _ =>
         println(s"Unknown command: ${args(0)}")
@@ -55,6 +61,7 @@ object Main {
         |  start           Start the scheduler service (runs indefinitely)
         |  schedule        Schedule a message (interactive)
         |  parse           Parse and validate a schedule request JSON
+        |  openapi         Generate OpenAPI specification (--json for JSON, default YAML)
         |  help            Show this help message
         |
         |Environment Variables:
@@ -64,6 +71,9 @@ object Main {
         |  PUBSUB_CREDENTIALS_PATH   Path to service account JSON (optional)
         |  MAX_THREADS               Scheduler thread pool size (default: 10)
         |  POLLING_INTERVAL_SECONDS  Scheduler polling interval (default: 10)
+        |  API_PORT                  HTTP API port (default: 8081)
+        |  API_USERNAME              Basic auth username (optional, enables auth if set with password)
+        |  API_PASSWORD              Basic auth password (optional, enables auth if set with username)
         |
         |Examples:
         |  # Start service
@@ -94,10 +104,11 @@ object Main {
       val dbManager = new DatabaseManager(config.database)
       val pubsubClient = new PubSubClient(config.pubsub)
       val scheduler = new MessageScheduler(dbManager.getDataSource, pubsubClient, config.scheduler)
-      val subscriber = new PubSubSubscriber(config.pubsub, scheduler)
+      val subscriber = new PubSubSubscriber(config.pubsub, config.pubsubSubscription, scheduler)
       val healthServer = new HealthCheckServer(8080, dbManager, pubsubClient)
+      val apiServer = new HttpApiServer(config.api, scheduler)
       
-      components = Some(AppComponents(config, dbManager, pubsubClient, scheduler, subscriber, healthServer))
+      components = Some(AppComponents(config, dbManager, pubsubClient, scheduler, subscriber, healthServer, apiServer))
       
       // Test database connection
       dbManager.testConnection() match {
@@ -112,10 +123,13 @@ object Main {
       healthServer.start()
       scheduler.start()
       subscriber.start()
+      apiServer.start()
       
       logger.logInfo("Service started successfully")
-      logger.logInfo(s"Listening to subscription: ${config.pubsub.subscriptionName}")
+      logger.logInfo(s"Listening to subscription: ${config.pubsubSubscription}")
       logger.logInfo("Health check available at http://localhost:8080/health")
+      logger.logInfo(s"HTTP API available at http://localhost:${config.api.port}/schedule")
+      logger.logInfo(s"Swagger UI available at http://localhost:${config.api.port}/docs")
       
       // Add shutdown hook
       Runtime.getRuntime.addShutdownHook(new Thread(() => {
@@ -234,8 +248,24 @@ object Main {
     }
   }
   
+  /**
+   * Generates OpenAPI specification
+   */
+  private def generateOpenApi(args: Array[String]): Unit = {
+    val useJson = args.contains("--json")
+    
+    val spec = if (useJson) {
+      HttpApiServer.generateOpenApiJson()
+    } else {
+      HttpApiServer.generateOpenApiYaml()
+    }
+    
+    println(spec)
+  }
+  
   private def shutdown(): Unit = {
     components.foreach { comp =>
+      Try(comp.apiServer.stop())
       Try(comp.subscriber.stop())
       Try(comp.scheduler.stop())
       Try(comp.pubsubClient.shutdown())

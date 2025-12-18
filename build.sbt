@@ -43,6 +43,14 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-generic" % "0.14.6",
   "io.circe" %% "circe-parser" % "0.14.6",
   
+  // HTTP API (Tapir + Vert.x)
+  "com.softwaremill.sttp.tapir" %% "tapir-core" % "1.11.11",
+  "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % "1.11.11",
+  "com.softwaremill.sttp.tapir" %% "tapir-vertx-server" % "1.11.11",
+  "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % "1.11.11",
+  "com.softwaremill.sttp.tapir" %% "tapir-openapi-docs" % "1.11.11",
+  "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml" % "0.11.3",
+  
   // Testing
   "org.scalatest" %% "scalatest" % "3.2.17" % Test,
   "org.scalatestplus" %% "mockito-4-11" % "3.2.17.0" % Test

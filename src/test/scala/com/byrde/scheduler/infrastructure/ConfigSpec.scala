@@ -1,45 +1,49 @@
 package com.byrde.scheduler.infrastructure
 
+import com.google.auth.oauth2.GoogleCredentials
+import org.byrde.pubsub.conf.{PubSubConfig => CommonsPubSubConfig}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.mockito.Mockito._
 
 class ConfigSpec extends AnyFlatSpec with Matchers {
+  
+  // Mock credentials for testing
+  private val mockCredentials = mock(classOf[GoogleCredentials])
   
   val validDatabaseConfig = DatabaseConfig(
     url = "jdbc:postgresql://localhost:5432/scheduler",
     maxPoolSize = 10
   )
   
-  val validPubSubConfig = PubSubConfig(
-    projectId = "my-project",
-    subscriptionName = "schedule-requests",
-    credentialsPath = Some("/path/to/credentials.json")
+  val validPubSubConfig = CommonsPubSubConfig(
+    project = "my-project",
+    credentials = mockCredentials
   )
+  
+  val validSubscriptionName = "schedule-requests"
   
   val validSchedulerConfig = SchedulerConfig(
     maxThreads = 10,
     pollingIntervalSeconds = 10
   )
   
+  val validApiConfig = ApiConfig(
+    port = 8081,
+    username = None,
+    password = None
+  )
+  
   "Config.validate" should "accept valid configuration" in {
     val config = AppConfig(
       database = validDatabaseConfig,
       pubsub = validPubSubConfig,
-      scheduler = validSchedulerConfig
+      pubsubSubscription = validSubscriptionName,
+      scheduler = validSchedulerConfig,
+      api = validApiConfig
     )
     
     val result = Config.validate(config)
-    result.isRight shouldBe true
-  }
-  
-  it should "accept configuration without credentials path" in {
-    val configWithoutCreds = AppConfig(
-      database = validDatabaseConfig,
-      pubsub = validPubSubConfig.copy(credentialsPath = None),
-      scheduler = validSchedulerConfig
-    )
-    
-    val result = Config.validate(configWithoutCreds)
     result.isRight shouldBe true
   }
   
@@ -47,7 +51,9 @@ class ConfigSpec extends AnyFlatSpec with Matchers {
     val config = AppConfig(
       database = validDatabaseConfig.copy(url = ""),
       pubsub = validPubSubConfig,
-      scheduler = validSchedulerConfig
+      pubsubSubscription = validSubscriptionName,
+      scheduler = validSchedulerConfig,
+      api = validApiConfig
     )
     
     val result = Config.validate(config)
@@ -60,8 +66,10 @@ class ConfigSpec extends AnyFlatSpec with Matchers {
   it should "reject empty project ID" in {
     val config = AppConfig(
       database = validDatabaseConfig,
-      pubsub = validPubSubConfig.copy(projectId = ""),
-      scheduler = validSchedulerConfig
+      pubsub = validPubSubConfig.copy(project = ""),
+      pubsubSubscription = validSubscriptionName,
+      scheduler = validSchedulerConfig,
+      api = validApiConfig
     )
     
     val result = Config.validate(config)
@@ -74,8 +82,10 @@ class ConfigSpec extends AnyFlatSpec with Matchers {
   it should "reject empty subscription name" in {
     val config = AppConfig(
       database = validDatabaseConfig,
-      pubsub = validPubSubConfig.copy(subscriptionName = ""),
-      scheduler = validSchedulerConfig
+      pubsub = validPubSubConfig,
+      pubsubSubscription = "",
+      scheduler = validSchedulerConfig,
+      api = validApiConfig
     )
     
     val result = Config.validate(config)
@@ -105,26 +115,23 @@ class ConfigSpec extends AnyFlatSpec with Matchers {
     sqlserverConfig.url should startWith("jdbc:sqlserver:")
   }
   
-  "PubSubConfig" should "store project and subscription info" in {
-    val config = PubSubConfig(
-      projectId = "test-project",
-      subscriptionName = "test-subscription",
-      credentialsPath = Some("/path/to/creds.json")
+  "CommonsPubSubConfig" should "store project info" in {
+    val config = CommonsPubSubConfig(
+      project = "test-project",
+      credentials = mockCredentials
     )
     
-    config.projectId shouldBe "test-project"
-    config.subscriptionName shouldBe "test-subscription"
-    config.credentialsPath shouldBe Some("/path/to/creds.json")
+    config.project shouldBe "test-project"
   }
   
-  it should "allow optional credentials path" in {
-    val config = PubSubConfig(
-      projectId = "test-project",
-      subscriptionName = "test-subscription",
-      credentialsPath = None
+  it should "support optional emulator host" in {
+    val config = CommonsPubSubConfig(
+      project = "test-project",
+      credentials = mockCredentials,
+      hostOpt = Some("localhost:8085")
     )
     
-    config.credentialsPath shouldBe None
+    config.hostOpt shouldBe Some("localhost:8085")
   }
   
   "SchedulerConfig" should "store thread and polling configuration" in {
@@ -148,5 +155,28 @@ class ConfigSpec extends AnyFlatSpec with Matchers {
     SchedulerConfig(10, 10).pollingIntervalSeconds shouldBe 10
     SchedulerConfig(10, 60).pollingIntervalSeconds shouldBe 60
   }
+  
+  "ApiConfig" should "indicate auth is disabled when credentials are not set" in {
+    val config = ApiConfig(port = 8081, username = None, password = None)
+    config.isAuthEnabled shouldBe false
+  }
+  
+  it should "indicate auth is disabled when only username is set" in {
+    val config = ApiConfig(port = 8081, username = Some("admin"), password = None)
+    config.isAuthEnabled shouldBe false
+  }
+  
+  it should "indicate auth is disabled when only password is set" in {
+    val config = ApiConfig(port = 8081, username = None, password = Some("secret"))
+    config.isAuthEnabled shouldBe false
+  }
+  
+  it should "indicate auth is enabled when both username and password are set" in {
+    val config = ApiConfig(port = 8081, username = Some("admin"), password = Some("secret"))
+    config.isAuthEnabled shouldBe true
+  }
+  
+  it should "store port configuration" in {
+    ApiConfig(port = 9000, username = None, password = None).port shouldBe 9000
+  }
 }
-

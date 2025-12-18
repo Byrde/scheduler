@@ -1,0 +1,134 @@
+openapi: 3.1.0
+info:
+  title: Scheduler API
+  version: 1.0.0
+  description: HTTP API for scheduling messages to Pub/Sub topics
+paths:
+  /schedule:
+    post:
+      tags:
+      - Scheduling
+      summary: Schedule Message
+      description: Schedule a message for future delivery to a Pub/Sub topic
+      operationId: postSchedule
+      parameters:
+      - name: Authorization
+        in: header
+        description: Basic auth credentials (optional)
+        required: false
+        schema:
+          type: string
+      requestBody:
+        description: Schedule request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleApiRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful scheduling response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    ErrorResponse:
+      title: ErrorResponse
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: string
+        details:
+          type: string
+    Map_String:
+      title: Map_String
+      type: object
+      additionalProperties:
+        type: string
+    PayloadConfig:
+      title: PayloadConfig
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/Map_String'
+    ScheduleApiRequest:
+      title: ScheduleApiRequest
+      type: object
+      required:
+      - schedule
+      - targetTopic
+      - payload
+      properties:
+        schedule:
+          $ref: '#/components/schemas/ScheduleConfig'
+        targetTopic:
+          type: string
+        payload:
+          $ref: '#/components/schemas/PayloadConfig'
+        taskName:
+          type: string
+    ScheduleApiResponse:
+      title: ScheduleApiResponse
+      type: object
+      required:
+      - taskId
+      - status
+      - message
+      properties:
+        taskId:
+          type: string
+        status:
+          type: string
+        message:
+          type: string
+    ScheduleConfig:
+      title: ScheduleConfig
+      type: object
+      required:
+      - type
+      properties:
+        type:
+          type: string
+        executionTime:
+          type: integer
+          format: int64
+        expression:
+          type: string
+        delaySeconds:
+          type: integer
+          format: int64
+        hour:
+          type: integer
+          format: int32
+        minute:
+          type: integer
+          format: int32
+        initialExecutionTime:
+          type: integer
+          format: int64

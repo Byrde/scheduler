@@ -21,7 +21,8 @@ Starts the scheduler service in production mode. This command:
 - Initializes database connection
 - Starts the db-scheduler task processor
 - Starts the Pub/Sub subscriber
-- Starts the health check HTTP server
+- Starts the health check HTTP server (port 8080)
+- Starts the HTTP API server with Swagger UI (port 8081)
 - Runs indefinitely until stopped (SIGTERM/SIGINT)
 
 **Example:**
@@ -34,9 +35,12 @@ java -jar pubsub-message-scheduler.jar start
 [INFO] Starting Pub/Sub Message Scheduler
 [INFO] Database connection successful
 [INFO] Health check server started on port 8080
+[INFO] HTTP API server started on port 8081
 [INFO] Starting message scheduler
 [INFO] Listening to subscription: schedule-requests
 [INFO] Service started successfully
+[INFO] HTTP API available at http://localhost:8081/schedule
+[INFO] Swagger UI available at http://localhost:8081/docs
 ```
 
 **Environment Variables Required:**
@@ -105,6 +109,26 @@ Parsing schedule request...
 
 ---
 
+### `openapi`
+
+Generates OpenAPI specification for the HTTP API. Outputs YAML by default, or JSON with `--json` flag.
+
+**Example (YAML):**
+```bash
+java -jar pubsub-message-scheduler.jar openapi > openapi.yaml
+```
+
+**Example (JSON):**
+```bash
+java -jar pubsub-message-scheduler.jar openapi --json > openapi.json
+```
+
+**Notes:**
+- The generated spec is OpenAPI 3.1.0 compliant
+- A pre-generated spec is available at `docs/openapi.yaml`
+
+---
+
 ### `help`
 
 Displays usage information and command reference.
@@ -125,9 +149,12 @@ All commands respect these environment variables:
 | `DATABASE_URL` | Yes | - | JDBC connection string for PostgreSQL, MySQL, or SQL Server |
 | `PUBSUB_PROJECT_ID` | Yes | - | Google Cloud project ID |
 | `PUBSUB_SUBSCRIPTION` | Yes | - | Pub/Sub subscription name for inbound schedule requests |
-| `PUBSUB_CREDENTIALS_PATH` | No | Default | Path to service account JSON file |
+| `PUBSUB_CREDENTIALS_PATH` | No | ADC | Path to service account JSON file |
 | `MAX_THREADS` | No | 10 | Number of worker threads for task execution |
 | `POLLING_INTERVAL_SECONDS` | No | 10 | How often to poll database for due tasks |
+| `API_PORT` | No | 8081 | HTTP API server port |
+| `API_USERNAME` | No | - | Basic auth username (enables auth when set with password) |
+| `API_PASSWORD` | No | - | Basic auth password (enables auth when set with username) |
 
 ## Exit Codes
 
@@ -228,5 +255,56 @@ export MAX_THREADS="20"
 export POLLING_INTERVAL_SECONDS="5"
 
 java -jar pubsub-message-scheduler.jar start
+```
+
+### Schedule via HTTP API
+
+The HTTP API provides a REST endpoint for scheduling messages. Swagger UI is available at `/docs`.
+
+**Without authentication:**
+```bash
+curl -X POST http://localhost:8081/schedule \
+  -H "Content-Type: application/json" \
+  -d '{
+    "schedule": {
+      "type": "one-time",
+      "executionTime": '"$(($(date +%s) * 1000 + 60000))"'
+    },
+    "targetTopic": "notifications",
+    "payload": {
+      "data": "SGVsbG8gV29ybGQ="
+    }
+  }'
+```
+
+**With Basic authentication:**
+```bash
+# Set credentials
+export API_USERNAME="admin"
+export API_PASSWORD="secret"
+
+# Call API with Basic auth
+curl -X POST http://localhost:8081/schedule \
+  -H "Content-Type: application/json" \
+  -u "$API_USERNAME:$API_PASSWORD" \
+  -d '{
+    "schedule": {
+      "type": "one-time",
+      "executionTime": '"$(($(date +%s) * 1000 + 60000))"'
+    },
+    "targetTopic": "notifications",
+    "payload": {
+      "data": "SGVsbG8gV29ybGQ="
+    }
+  }'
+```
+
+**Response (201 Created):**
+```json
+{
+  "taskId": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "scheduled",
+  "message": "Message scheduled successfully"
+}
 ```
 

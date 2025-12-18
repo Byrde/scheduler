@@ -1,60 +1,55 @@
 package com.byrde.scheduler.infrastructure
 
 import com.byrde.scheduler.domain.{MessagePayload, TargetTopic}
-import com.google.api.gax.core.FixedCredentialsProvider
-import com.google.auth.oauth2.{GoogleCredentials, ServiceAccountCredentials}
-import com.google.cloud.pubsub.v1.{Publisher, TopicAdminClient, TopicAdminSettings}
-import com.google.protobuf.ByteString
-import com.google.pubsub.v1.{PubsubMessage, TopicName}
-import org.byrde.logging.ScalaLogger
+import org.byrde.logging.{Logger, ScalaLogger}
+import org.byrde.pubsub._
+import org.byrde.pubsub.conf.{PubSubConfig => CommonsPubSubConfig}
+import org.byrde.pubsub.google.GooglePubSubPublisher
 
-import java.io.FileInputStream
-import scala.jdk.CollectionConverters._
+import io.circe.Encoder
+
+import scala.concurrent.{Await, ExecutionContextExecutor}
+import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
 /**
- * Client for publishing messages to Google Cloud Pub/Sub
+ * Client for publishing messages to Google Cloud Pub/Sub.
+ * Wraps the Byrde commons GooglePubSubPublisher.
  */
-class PubSubClient(config: PubSubConfig) {
+class PubSubClient(config: CommonsPubSubConfig)(implicit ec: ExecutionContextExecutor) {
   
-  private val logger = new ScalaLogger("PubSubClient")
+  private val logger: Logger = new ScalaLogger("PubSubClient")
   
-  private val credentials: GoogleCredentials = loadCredentials()
+  private val publisher = new GooglePubSubPublisher(config, logger)
   
-  // Cache of publishers by topic name
-  private val publishers = scala.collection.mutable.Map[String, Publisher]()
-  
-  private def loadCredentials(): GoogleCredentials = {
-    config.credentialsPath match {
-      case Some(path) =>
-        logger.logInfo(s"Loading Pub/Sub credentials from: $path")
-        ServiceAccountCredentials.fromStream(new FileInputStream(path))
-      case None =>
-        logger.logInfo("Using default application credentials")
-        GoogleCredentials.getApplicationDefault
-    }
-  }
+  // Encoder for raw byte payload - encodes as base64 string
+  private implicit val byteArrayEncoder: Encoder[Array[Byte]] = 
+    Encoder.encodeString.contramap(bytes => java.util.Base64.getEncoder.encodeToString(bytes))
   
   /**
    * Publishes a message to the specified topic
    */
   def publish(topic: TargetTopic, payload: MessagePayload): Either[String, String] = {
     Try {
-      val topicName = topic.toFullName(config.projectId)
-      val publisher = getOrCreatePublisher(topicName)
+      val envelope = Envelope(
+        topic = topic.name,
+        msg = payload.data,
+        metadata = payload.attributes
+      )
       
-      val pubsubMessage = PubsubMessage.newBuilder()
-        .setData(ByteString.copyFrom(payload.data))
-        .putAllAttributes(payload.attributes.asJava)
-        .build()
-      
-      val future = publisher.publish(pubsubMessage)
-      val messageId = future.get()
-      
-      logger.logDebug(s"Published message to $topicName with ID: $messageId")
-      messageId
+      val future = publisher.publish(envelope)
+      Await.result(future, 30.seconds)
     } match {
-      case Success(messageId) => Right(messageId)
+      case Success(Right(_)) => 
+        logger.logDebug(s"Published message to ${topic.name}")
+        Right(s"published-to-${topic.name}")
+      case Success(Left(error)) =>
+        val errorMsg = error match {
+          case PubSubError.PublishError(msg, _) => msg
+          case other => other.toString
+        }
+        logger.logError(s"Failed to publish message to ${topic.name}: $errorMsg")
+        Left(errorMsg)
       case Failure(ex) =>
         logger.logError(s"Failed to publish message to ${topic.name}: ${ex.getMessage}", ex)
         Left(ex.getMessage)
@@ -62,88 +57,28 @@ class PubSubClient(config: PubSubConfig) {
   }
   
   /**
-   * Gets or creates a publisher for the given topic
-   */
-  private def getOrCreatePublisher(topicName: String): Publisher = {
-    publishers.getOrElseUpdate(topicName, {
-      logger.logInfo(s"Creating publisher for topic: $topicName")
-      val credentialsProvider = FixedCredentialsProvider.create(credentials)
-      
-      Publisher.newBuilder(topicName)
-        .setCredentialsProvider(credentialsProvider)
-        .build()
-    })
-  }
-  
-  /**
-   * Verifies that a topic exists (for validation purposes)
-   */
-  def topicExists(topic: TargetTopic): Boolean = {
-    Try {
-      val credentialsProvider = FixedCredentialsProvider.create(credentials)
-      val adminSettings = TopicAdminSettings.newBuilder()
-        .setCredentialsProvider(credentialsProvider)
-        .build()
-      
-      val adminClient = TopicAdminClient.create(adminSettings)
-      try {
-        val topicName = TopicName.parse(topic.toFullName(config.projectId))
-        adminClient.getTopic(topicName)
-        true
-      } finally {
-        adminClient.close()
-      }
-    } match {
-      case Success(_) => true
-      case Failure(ex) =>
-        logger.logWarning(s"Topic ${topic.name} does not exist or cannot be accessed: ${ex.getMessage}")
-        false
-    }
-  }
-  
-  /**
-   * Tests Pub/Sub connectivity by listing topics (health check)
+   * Tests Pub/Sub connectivity by attempting a simple operation.
+   * Note: The commons library auto-creates topics on publish, so we verify credentials are valid.
    */
   def testConnection(): Either[String, Unit] = {
     Try {
-      val credentialsProvider = FixedCredentialsProvider.create(credentials)
-      val adminSettings = TopicAdminSettings.newBuilder()
-        .setCredentialsProvider(credentialsProvider)
-        .build()
-      
-      val adminClient = TopicAdminClient.create(adminSettings)
-      try {
-        // List topics to verify we can connect and authenticate
-        val projectName = s"projects/${config.projectId}"
-        val topics = adminClient.listTopics(projectName)
-        // Just verify we can iterate (lazy evaluation)
-        topics.iterateAll().iterator().hasNext
-        logger.logDebug("Pub/Sub connection test successful")
-        ()
-      } finally {
-        adminClient.close()
-      }
+      // Verify credentials are valid by checking they can be refreshed
+      config.credentials.refresh()
+      logger.logDebug("Pub/Sub credentials validated successfully")
+      Right(())
     } match {
-      case Success(_) => Right(())
+      case Success(result) => result
       case Failure(ex) =>
-        logger.logError(s"Pub/Sub connection test failed: ${ex.getMessage}", ex)
+        logger.logError(s"Pub/Sub credential validation failed: ${ex.getMessage}", ex)
         Left(s"Pub/Sub connection failed: ${ex.getMessage}")
     }
   }
   
   /**
-   * Shuts down all publishers
+   * Shuts down the publisher
    */
   def shutdown(): Unit = {
-    logger.logInfo("Shutting down Pub/Sub publishers")
-    publishers.values.foreach { publisher =>
-      try {
-        publisher.shutdown()
-      } catch {
-        case ex: Exception => logger.logError(s"Error shutting down publisher: ${ex.getMessage}", ex)
-      }
-    }
-    publishers.clear()
+    logger.logInfo("Shutting down Pub/Sub publisher")
+    publisher.close()
   }
 }
-
