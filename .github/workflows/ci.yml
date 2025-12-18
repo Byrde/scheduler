@@ -51,13 +51,13 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Compile project
+      - name: Compile
         run: sbt compile
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Run tests
+      - name: Test
         run: sbt test
         env:
           GITHUB_ACTOR: ${{ github.actor }}
@@ -70,9 +70,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Build and publish Docker image
+      - name: Build & Publish Docker image
         run: sbt -Dversion=${{ steps.release.outputs.new-release-version }} docker:publish
         env:
-          GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

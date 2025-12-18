@@ -58,7 +58,6 @@ Compile / mainClass := Some("com.byrde.scheduler.Main")
 dockerBaseImage := "eclipse-temurin:11-jre-jammy"
 dockerExposedPorts := Seq(8080)
 dockerRepository := Some("ghcr.io/byrde")
-dockerUsername := sys.env.get("GITHUB_ACTOR")
 dockerUpdateLatest := true
 
 Docker / packageName := "scheduler"
