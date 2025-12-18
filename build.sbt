@@ -21,8 +21,8 @@ credentials += Credentials(
 
 libraryDependencies ++= Seq(
   // Byrde commons libraries
-  "org.byrde" %% "logging" % "0.1.0",
-  "org.byrde" %% "pubsub" % "0.1.0",
+  "org.byrde" %% "logging" % "1.0.1",
+  "org.byrde" %% "pubsub" % "1.0.1",
   
   // db-scheduler for persistent task scheduling
   "com.github.kagkarlsson" % "db-scheduler" % "16.0.0",
